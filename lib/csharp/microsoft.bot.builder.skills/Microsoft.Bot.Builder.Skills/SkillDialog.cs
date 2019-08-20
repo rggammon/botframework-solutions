@@ -7,6 +7,7 @@ using Microsoft.Bot.Builder.Dialogs;
 using Microsoft.Bot.Builder.Skills.Auth;
 using Microsoft.Bot.Builder.Skills.Models;
 using Microsoft.Bot.Builder.Skills.Models.Manifest;
+using Microsoft.Bot.Builder.Skills.Switch;
 using Microsoft.Bot.Builder.Solutions;
 using Microsoft.Bot.Builder.Solutions.Authentication;
 using Microsoft.Bot.Builder.Solutions.Dialogs;
@@ -26,6 +27,7 @@ namespace Microsoft.Bot.Builder.Skills
         private IServiceClientCredentials _serviceClientCredentials;
         private IBotTelemetryClient _telemetryClient;
         private UserState _userState;
+        private IStatePropertyAccessor<SkillContext> _skillContextAccessor;
 
         private SkillManifest _skillManifest;
         private ISkillTransport _skillTransport;
@@ -60,6 +62,7 @@ namespace Microsoft.Bot.Builder.Skills
             _serviceClientCredentials = serviceClientCredentials ?? throw new ArgumentNullException(nameof(serviceClientCredentials));
             _telemetryClient = telemetryClient ?? throw new ArgumentNullException(nameof(telemetryClient));
             _userState = userState;
+            _skillContextAccessor = _userState.CreateProperty<SkillContext>(nameof(SkillContext));
             _skillTransport = skillTransport ?? new SkillWebSocketTransport(telemetryClient);
             _skillIntentRecognizer = skillIntentRecognizer;
 
@@ -151,8 +154,7 @@ namespace Microsoft.Bot.Builder.Skills
             var slots = new Dictionary<string, JObject>();
 
             // Retrieve the SkillContext state object to identify slots (parameters) that can be used to slot-fill when invoking the skill
-            var accessor = _userState.CreateProperty<SkillContext>(nameof(SkillContext));
-            var skillContext = await accessor.GetAsync(innerDc.Context, () => new SkillContext());
+            var skillContext = await _skillContextAccessor.GetAsync(innerDc.Context, () => new SkillContext());
 
             var dialogOptions = options != null ? options as SkillDialogOption : null;
             var actionName = dialogOptions?.Action;
@@ -317,6 +319,9 @@ namespace Microsoft.Bot.Builder.Skills
             {
                 // populate call id for auth purpose
                 activity.CallerId = _serviceClientCredentials.MicrosoftAppId;
+
+                var skillContext = await _skillContextAccessor.GetAsync(innerDc.Context, () => new SkillContext());
+                skillContext.SetSkillSwitchDataToActivity(activity, _skillManifest);
 
                 var endOfConversationActivity = await _skillTransport.ForwardToSkillAsync(_skillManifest, _serviceClientCredentials, innerDc.Context, activity, GetTokenRequestCallback(innerDc), GetFallbackCallback(innerDc));
 
