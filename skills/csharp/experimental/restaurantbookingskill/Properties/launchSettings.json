@@ -19,9 +19,10 @@
       "commandName": "Project",
       "launchBrowser": true,
       "environmentVariables": {
-        "ASPNETCORE_ENVIRONMENT": "Development"
+        "ASPNETCORE_ENVIRONMENT": "Development",
+        "AzureServicesAuthConnectionString": "RunAs=App;AppId=617e649d-deee-496d-be79-e40ee4822eaf;TenantId=72f988bf-86f1-41af-91ab-2d7cd011db47;AppKey={password goes here}"
       },
-      "applicationUrl": "http://localhost:1205/"
+      "applicationUrl": "http://localhost:3978/"
     }
   }
 }

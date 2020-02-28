@@ -13,10 +13,10 @@ using Microsoft.Bot.Builder.Azure;
 using Microsoft.Bot.Builder.BotFramework;
 using Microsoft.Bot.Builder.Integration.ApplicationInsights.Core;
 using Microsoft.Bot.Builder.Integration.AspNet.Core;
+using Microsoft.Bot.Connector.Authentication;
 using Microsoft.Bot.Solutions;
 using Microsoft.Bot.Solutions.Responses;
 using Microsoft.Bot.Solutions.TaskExtensions;
-using Microsoft.Bot.Connector.Authentication;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
@@ -26,6 +26,7 @@ using RestaurantBookingSkill.Dialogs;
 using RestaurantBookingSkill.Responses.Main;
 using RestaurantBookingSkill.Responses.Shared;
 using RestaurantBookingSkill.Services;
+using SampleBot.Authentication;
 
 namespace RestaurantBooking
 {
@@ -77,7 +78,7 @@ namespace RestaurantBooking
 
             // Configure credentials
             services.AddSingleton<ICredentialProvider, ConfigurationCredentialProvider>();
-            services.AddSingleton(new MicrosoftAppCredentials(settings.MicrosoftAppId, settings.MicrosoftAppPassword));
+            services.AddSingleton<MicrosoftAppCredentials>(sp => new MsiAppCredentials(settings.MicrosoftAppId));
 
             // Configure bot state
             services.AddSingleton<IStorage>(new CosmosDbStorage(settings.CosmosDb));

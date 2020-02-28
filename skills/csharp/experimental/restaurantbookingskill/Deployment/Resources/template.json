@@ -14,12 +14,6 @@
       "type": "string",
       "defaultValue": "[take(uniqueString(resourceGroup().id), 7)]"
     },
-    "microsoftAppId": {
-      "type": "string"
-    },
-    "microsoftAppPassword": {
-      "type": "string"
-    },
     "useCosmosDb": {
       "type": "bool",
       "defaultValue": true
@@ -187,6 +181,12 @@
       }
     },
     {
+      "type": "Microsoft.ManagedIdentity/userAssignedIdentities",
+      "name": "[variables('botServiceName')]",
+      "apiVersion": "2018-11-30",
+      "location": "[parameters('location')]"
+    },
+    {
       "comments": "bot web app",
       "type": "Microsoft.Web/sites",
       "apiVersion": "2018-02-01",
@@ -199,11 +199,7 @@
           "appSettings": [
             {
               "name": "MicrosoftAppId",
-              "value": "[parameters('microsoftAppId')]"
-            },
-            {
-              "name": "MicrosoftAppPassword",
-              "value": "[parameters('microsoftAppPassword')]"
+              "value": "[reference(concat('Microsoft.ManagedIdentity/userAssignedIdentities/', variables('botServiceName')), '2018-11-30').clientId]"
             }
           ]
         }
@@ -212,7 +208,8 @@
         "[parameters('resourceTagName')]": "[parameters('resourceTagValue')]"
       },
       "dependsOn": [
-        "[resourceId('Microsoft.Web/serverfarms', parameters('appServicePlanName'))]"
+        "[resourceId('Microsoft.Web/serverfarms', parameters('appServicePlanName'))]",
+        "[resourceId('Microsoft.ManagedIdentity/userAssignedIdentities/', variables('botServiceName'))]"
       ]
     },
     {
@@ -229,13 +226,16 @@
         "displayName": "[variables('botServiceName')]",
         "endpoint": "[variables('botEndpoint')]",
         "isStreamingSupported": true,
-        "msaAppId": "[parameters('microsoftAppId')]",
+        "msaAppId": "[reference(concat('Microsoft.ManagedIdentity/userAssignedIdentities/', variables('botServiceName')), '2018-11-30').clientId]",
         "developerAppInsightKey": "[reference(resourceId('Microsoft.Insights/components', parameters('appInsightsName'))).InstrumentationKey]",
         "developerAppInsightsApplicationId": "[reference(resourceId('Microsoft.Insights/components', parameters('appInsightsName'))).ApplicationId]"
       },
       "tags": {
         "[parameters('resourceTagName')]": "[parameters('resourceTagValue')]"
-      }
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.ManagedIdentity/userAssignedIdentities/', variables('botServiceName'))]"
+      ]
     },
     {
       "apiVersion": "2016-02-01-preview",

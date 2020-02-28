@@ -4,8 +4,6 @@ Param(
     [string] $name,
 	[string] $resourceGroup,
     [string] $location,
-	[string] $appId,
-    [string] $appPassword,
     [string] $parametersFile,
 	[switch] $createLuisAuthoring,
     [string] $luisAuthoringKey,
@@ -73,10 +71,6 @@ if (-not $location) {
     $location = Read-Host "? Azure resource group region"
 }
 
-if (-not $appPassword) {
-    $appPassword = Read-Host "? Password for MSA app registration (must be at least 16 characters long, contain at least 1 special character, and contain at least 1 numeric character)"
-}
-
 if (-not $luisAuthoringKey) {
     if (-not $PSBoundParameters.ContainsKey("createLuisAuthoring")) {
         $confirmCreateKey = Read-Host "? Create a new LUIS Authoring Resource? [y/n]"
@@ -98,28 +92,6 @@ if (-not $luisAuthoringRegion) {
     $luisAuthoringRegion = Read-Host "? LUIS Authoring Region (westus, westeurope, or australiaeast)"
 }
 
-if (-not $appId) {
-	# Create app registration
-	$app = (az ad app create `
-		--display-name $name `
-		--password `"$($appPassword)`" `
-		--available-to-other-tenants `
-		--reply-urls 'https://token.botframework.com/.auth/web/redirect' `
-        --output json)
-
-	# Retrieve AppId
-	if ($app) {
-		$appId = ($app | ConvertFrom-Json) | Select-Object -ExpandProperty appId
-	}
-
-	if(-not $appId) {
-		Write-Host "! Could not provision Microsoft App Registration automatically. Review the log for more information." -ForegroundColor Red
-		Write-Host "! Log: $($logFile)" -ForegroundColor Red
-		Write-Host "+ Provision an app manually in the Azure Portal, then try again providing the -appId and -appPassword arguments. See https://aka.ms/vamanualappcreation for more information." -ForegroundColor Magenta
-		Break
-	}
-}
-
 if (-not $armLuisAuthoringRegion) {
     $armLuisAuthoringRegion = $luisAuthoringRegion
 }
@@ -139,7 +111,7 @@ if ($parametersFile) {
 		--resource-group $resourcegroup `
 		--template-file "$(Join-Path $PSScriptRoot '..' 'Resources' 'template.json')" `
 		--parameters "@$($parametersFile)" `
-		--parameters name=$name microsoftAppId=$appId microsoftAppPassword="`"$($appPassword)`"" luisAuthoringLocation=$armLuisAuthoringRegion useLuisAuthoring=$createLuisAuthoring `
+		--parameters name=$name luisAuthoringLocation=$armLuisAuthoringRegion useLuisAuthoring=$createLuisAuthoring `
         --output json
 
 	if ($validation) {    
@@ -154,7 +126,7 @@ if ($parametersFile) {
 				--resource-group $resourceGroup `
 				--template-file "$(Join-Path $PSScriptRoot '..' 'Resources' 'template.json')" `
 				--parameters "@$($parametersFile)" `
-				--parameters name=$name microsoftAppId=$appId microsoftAppPassword="`"$($appPassword)`"" luisAuthoringLocation=$armLuisAuthoringRegion useLuisAuthoring=$createLuisAuthoring `
+				--parameters name=$name luisAuthoringLocation=$armLuisAuthoringRegion useLuisAuthoring=$createLuisAuthoring `
                 --output json 2>> $logFile | Out-Null
 
             Write-Host "Done." -ForegroundColor Green
@@ -173,7 +145,7 @@ else {
 	$validation = az group deployment validate `
 		--resource-group $resourcegroup `
 		--template-file "$(Join-Path $PSScriptRoot '..' 'Resources' 'template.json')" `
-		--parameters name=$name microsoftAppId=$appId microsoftAppPassword="`"$($appPassword)`"" luisAuthoringLocation=$armLuisAuthoringRegion useLuisAuthoring=$createLuisAuthoring `
+		--parameters name=$name luisAuthoringLocation=$armLuisAuthoringRegion useLuisAuthoring=$createLuisAuthoring `
         --output json
 
 	if ($validation) {
@@ -187,7 +159,7 @@ else {
 				--name $timestamp `
 				--resource-group $resourceGroup `
 				--template-file "$(Join-Path $PSScriptRoot '..' 'Resources' 'template.json')" `
-				--parameters name=$name microsoftAppId=$appId microsoftAppPassword="`"$($appPassword)`"" luisAuthoringLocation=$armLuisAuthoringRegion useLuisAuthoring=$createLuisAuthoring `
+				--parameters name=$name luisAuthoringLocation=$armLuisAuthoringRegion useLuisAuthoring=$createLuisAuthoring `
                 --output json 2>> $logFile | Out-Null
 
             Write-Host "Done." -ForegroundColor Green
@@ -218,9 +190,6 @@ if ($outputs)
 	$outputMap = @{}
 	$outputs.PSObject.Properties | Foreach-Object { $outputMap[$_.Name] = $_.Value }
 
-    # Update AD app with homepage
-    az ad app update --id $appId --homepage "https://$($outputs.botWebAppName.value).azurewebsites.net"
-
 	# Update appsettings.json
 	Write-Host "> Updating appsettings.json ..." -NoNewline
 	if (Test-Path $(Join-Path $projDir appsettings.json)) {
@@ -229,9 +198,6 @@ if ($outputs)
 	else {
 		$settings = New-Object PSObject
 	}
-
-	$settings | Add-Member -Type NoteProperty -Force -Name 'microsoftAppId' -Value $appId
-	$settings | Add-Member -Type NoteProperty -Force -Name 'microsoftAppPassword' -Value $appPassword
 
     if ($useGov) {
         $settings | Add-Member -Type NoteProperty -Force -Name 'ChannelService' -Value "https://botframework.azure.us"
@@ -266,8 +232,6 @@ if ($outputs)
 	Write-Host "+ Summary of the deployed resources:" -ForegroundColor Magenta
 	Write-Host "    - Resource Group: $($resourceGroup)" -ForegroundColor Magenta
 	Write-Host "    - Bot Web App: $($outputs.botWebAppName.value)" -ForegroundColor Magenta
-	Write-Host "    - Microsoft App Id: $($appId)" -ForegroundColor Magenta
-	Write-Host "    - Microsoft App Password: $($appPassword)" -ForegroundColor Magenta
 
 	Write-Host "> Deployment complete." -ForegroundColor Green
 }

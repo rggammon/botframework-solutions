@@ -15,6 +15,8 @@ using RestaurantBookingSkill.Services;
 using SkillServiceLibrary.Utilities;
 using Microsoft.Bot.Solutions.Skills;
 using Microsoft.Bot.Builder.Dialogs;
+using System.Threading.Tasks;
+using SampleBot.Authentication;
 
 namespace RestaurantBookingSkill.Adapters
 {
@@ -59,6 +61,11 @@ namespace RestaurantBookingSkill.Adapters
             Use(new EventDebuggerMiddleware());
             Use(new SkillMiddleware(userState, conversationState, conversationState.CreateProperty<DialogState>(nameof(DialogState))));
             Use(new SetSpeakMiddleware());
+        }
+
+        protected override Task<AppCredentials> BuildCredentialsAsync(string appId, string oAuthScope = null)
+        {
+            return Task.FromResult<AppCredentials>(new MsiAppCredentials(appId));
         }
     }
 }
